@@ -31,6 +31,15 @@ this.ckan.module('spatial-query', function ($, _) {
       this.el.ready(this._onReady);
     },
 
+    normalize_extent: function(extent){
+      // when w point is + and e is -, map thinks w is e and e is w.
+      // this function makes w more -, so map thinks it is west of e.
+      s = extent[0][0], w = extent[0][1], n = extent[1][0], e = extent[1][1]
+      while (w > e) w -= 360
+
+      return [[s, w], [n, e]]
+    },
+
     _getParameterByName: function (name) {
       var match = RegExp('[?&]' + name + '=([^&]*)')
                         .exec(window.location.search);
@@ -44,6 +53,8 @@ this.ckan.module('spatial-query', function ($, _) {
             var coords = xmin;
             xmin = coords[0]; ymin = coords[1]; xmax = coords[2]; ymax = coords[3];
         }
+        // normalize xmin, so it will be less than xmax
+        while (xmin > xmax) xmin -=360
         return new L.Rectangle([[ymin, xmin], [ymax, xmax]],
                                this.options.style);
     },
@@ -174,10 +185,13 @@ this.ckan.module('spatial-query', function ($, _) {
         previous_extent = module._getParameterByName('ext_prev_extent');
         if (previous_extent) {
           coords = previous_extent.split(',');
-          map.fitBounds([[coords[1], coords[0]], [coords[3], coords[2]]]);
+          extent = [[coords[1], coords[0]], [coords[3], coords[2]]]
+          extent = module.normalize_extent(extent)
+          map.fitBounds(extent);
         } else {
           if (!previous_bbox){
-              map.fitBounds(module.options.default_extent);
+              extent = module.normalize_extent(module.options.default_extent)
+              map.fitBounds(extent);
           }
         }
       }
